@@ -3,35 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Task Tracker</title>
+    <title>ToDo App – Redux</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
       <header>
-        <h1>🚀 AI Task Tracker</h1>
+        <h1>📝 ToDo App <small>(Redux)</small></h1>
         <button id="theme-toggle" aria-label="Toggle dark/light mode">
           🌙
         </button>
       </header>
 
-      <form id="task-form">
-        <input
-          type="text"
-          id="task-input"
-          placeholder="Add a new task..."
-          autocomplete="off"
-          required
-        />
-        <button type="submit" id="add-btn">Add</button>
-      </form>
-
-      <div id="filters">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="active">Active</button>
-        <button class="filter-btn" data-filter="completed">Completed</button>
+      <!-- AddTask Component -->
+      <div id="add-task-component">
+        <form id="task-form">
+          <input
+            type="text"
+            id="task-input"
+            placeholder="Add a new task..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit" id="add-btn">Add</button>
+        </form>
       </div>
 
+      <!-- Filter buttons -->
+      <div id="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="done">Done</button>
+        <button class="filter-btn" data-filter="not-done">Not Done</button>
+      </div>
+
+      <!-- ListTask Component -->
       <ul id="task-list"></ul>
 
       <footer id="task-stats">
@@ -40,6 +45,8 @@
       </footer>
     </div>
 
+    <!-- Redux CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/4.2.1/redux.min.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

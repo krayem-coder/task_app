@@ -1,146 +1,310 @@
-// ── State ──────────────────────────────────────────────────
-const STORAGE_KEY = "ai-task-tracker";
-let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-let currentFilter = "all";
+// =====================================================
+//  ToDo App — Redux-powered global state management
+// =====================================================
 
-// ── DOM Elements ──────────────────────────────────────────
-const taskForm = document.getElementById("task-form");
-const taskInput = document.getElementById("task-input");
-const taskList = document.getElementById("task-list");
-const taskCount = document.getElementById("task-count");
-const themeToggle = document.getElementById("theme-toggle");
-const clearBtn = document.getElementById("clear-completed");
-const filterBtns = document.querySelectorAll(".filter-btn");
+// ── Action Types ─────────────────────────────────────────
+const ADD_TASK = "ADD_TASK";
+const TOGGLE_TASK = "TOGGLE_TASK";
+const DELETE_TASK = "DELETE_TASK";
+const EDIT_TASK = "EDIT_TASK";
+const SET_FILTER = "SET_FILTER";
 
-// ── Persistence ───────────────────────────────────────────
-function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+// ── Action Creators ──────────────────────────────────────
+function addTaskAction(description) {
+  return {
+    type: ADD_TASK,
+    payload: {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      description: description.trim(),
+      isDone: false,
+    },
+  };
 }
 
-// ── Rendering ─────────────────────────────────────────────
-function renderTasks() {
-  taskList.innerHTML = "";
+function toggleTaskAction(id) {
+  return { type: TOGGLE_TASK, payload: { id } };
+}
 
-  const filtered = tasks.filter((task) => {
-    if (currentFilter === "active") return !task.completed;
-    if (currentFilter === "completed") return task.completed;
-    return true;
-  });
+function deleteTaskAction(id) {
+  return { type: DELETE_TASK, payload: { id } };
+}
 
-  if (filtered.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "empty-state";
-    empty.innerHTML = "<span>📋</span>No tasks here yet!";
-    taskList.appendChild(empty);
-  } else {
-    filtered.forEach((task) => taskList.appendChild(createTaskElement(task)));
+function editTaskAction(id, newDescription) {
+  return {
+    type: EDIT_TASK,
+    payload: { id, description: newDescription.trim() },
+  };
+}
+
+function setFilterAction(filter) {
+  return { type: SET_FILTER, payload: { filter } };
+}
+
+// ── Initial State ────────────────────────────────────────
+const STORAGE_KEY = "redux-todo-app";
+const persistedTasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+const initialState = {
+  tasks: persistedTasks,
+  filter: "all", // "all" | "done" | "not-done"
+};
+
+// ── Reducer ──────────────────────────────────────────────
+function todoReducer(state, action) {
+  if (typeof state === "undefined") {
+    return initialState;
   }
 
-  updateCount();
+  switch (action.type) {
+    case ADD_TASK:
+      return { ...state, tasks: [action.payload, ...state.tasks] };
+
+    case TOGGLE_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.map(function (task) {
+          return task.id === action.payload.id
+            ? { ...task, isDone: !task.isDone }
+            : task;
+        }),
+      };
+
+    case DELETE_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.filter(function (task) {
+          return task.id !== action.payload.id;
+        }),
+      };
+
+    case EDIT_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.map(function (task) {
+          return task.id === action.payload.id
+            ? { ...task, description: action.payload.description }
+            : task;
+        }),
+      };
+
+    case SET_FILTER:
+      return { ...state, filter: action.payload.filter };
+
+    default:
+      return state;
+  }
 }
 
-function createTaskElement(task) {
-  const li = document.createElement("li");
-  li.className = "task-item" + (task.completed ? " completed" : "");
+// ── Create Redux Store ───────────────────────────────────
+var store = Redux.createStore(todoReducer);
+
+// Persist to localStorage on every state change
+store.subscribe(function () {
+  var state = store.getState();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
+});
+
+// ══════════════════════════════════════════════════════════
+//  COMPONENTS
+// ══════════════════════════════════════════════════════════
+
+// ── AddTask Component ────────────────────────────────────
+// Handles the form submission to add a new task
+var AddTask = (function () {
+  var form = document.getElementById("task-form");
+  var input = document.getElementById("task-input");
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (text) {
+      store.dispatch(addTaskAction(text));
+      input.value = "";
+      input.focus();
+    }
+  });
+})();
+
+// ── Task Component ───────────────────────────────────────
+// Creates a single task DOM element with toggle, edit, delete
+function Task(task) {
+  var li = document.createElement("li");
+  li.className = "task-item" + (task.isDone ? " completed" : "");
   li.dataset.id = task.id;
 
-  const checkbox = document.createElement("div");
-  checkbox.className = "task-checkbox" + (task.completed ? " checked" : "");
+  // Checkbox
+  var checkbox = document.createElement("div");
+  checkbox.className = "task-checkbox" + (task.isDone ? " checked" : "");
   checkbox.setAttribute("role", "checkbox");
-  checkbox.setAttribute("aria-checked", task.completed);
-  checkbox.addEventListener("click", () => toggleTask(task.id));
+  checkbox.setAttribute("aria-checked", task.isDone);
+  checkbox.addEventListener("click", function () {
+    store.dispatch(toggleTaskAction(task.id));
+  });
 
-  const text = document.createElement("span");
+  // Description text
+  var text = document.createElement("span");
   text.className = "task-text";
-  text.textContent = task.text;
+  text.textContent = task.description;
 
-  const deleteBtn = document.createElement("button");
+  // Edit button
+  var editBtn = document.createElement("button");
+  editBtn.className = "edit-btn";
+  editBtn.innerHTML = "✎";
+  editBtn.setAttribute("aria-label", "Edit task");
+  editBtn.addEventListener("click", function () {
+    enterEditMode(li, task);
+  });
+
+  // Delete button
+  var deleteBtn = document.createElement("button");
   deleteBtn.className = "delete-btn";
   deleteBtn.innerHTML = "✕";
   deleteBtn.setAttribute("aria-label", "Delete task");
-  deleteBtn.addEventListener("click", () => deleteTask(task.id));
+  deleteBtn.addEventListener("click", function () {
+    store.dispatch(deleteTaskAction(task.id));
+  });
 
-  li.append(checkbox, text, deleteBtn);
+  li.append(checkbox, text, editBtn, deleteBtn);
   return li;
 }
 
-function updateCount() {
-  const active = tasks.filter((t) => !t.completed).length;
-  const total = tasks.length;
-  taskCount.textContent = `${active} active / ${total} total`;
-}
+// Edit-mode helper: replaces text with an input field
+function enterEditMode(li, task) {
+  var textSpan = li.querySelector(".task-text");
+  var editBtn = li.querySelector(".edit-btn");
 
-// ── Actions ───────────────────────────────────────────────
-function addTask(text) {
-  const task = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    text: text.trim(),
-    completed: false,
-  };
-  tasks.unshift(task);
-  saveTasks();
-  renderTasks();
-}
+  // Create input pre-filled with current description
+  var input = document.createElement("input");
+  input.type = "text";
+  input.className = "edit-input";
+  input.value = task.description;
 
-function toggleTask(id) {
-  const task = tasks.find((t) => t.id === id);
-  if (task) {
-    task.completed = !task.completed;
-    saveTasks();
-    renderTasks();
+  // Replace span with input
+  textSpan.replaceWith(input);
+  input.focus();
+  input.select();
+
+  // Change edit button to save button
+  editBtn.innerHTML = "✓";
+  editBtn.className = "save-btn";
+
+  function saveEdit() {
+    var newDesc = input.value.trim();
+    if (newDesc && newDesc !== task.description) {
+      store.dispatch(editTaskAction(task.id, newDesc));
+    } else {
+      // Re-render without changes
+      ListTask.render();
+    }
   }
-}
 
-function deleteTask(id) {
-  tasks = tasks.filter((t) => t.id !== id);
-  saveTasks();
-  renderTasks();
-}
-
-function clearCompleted() {
-  tasks = tasks.filter((t) => !t.completed);
-  saveTasks();
-  renderTasks();
-}
-
-// ── Theme ─────────────────────────────────────────────────
-function initTheme() {
-  const saved = localStorage.getItem("theme");
-  if (saved === "dark") {
-    document.body.classList.add("dark");
-    themeToggle.textContent = "☀️";
-  }
-}
-
-function toggleTheme() {
-  const isDark = document.body.classList.toggle("dark");
-  themeToggle.textContent = isDark ? "☀️" : "🌙";
-  localStorage.setItem("theme", isDark ? "dark" : "light");
-}
-
-// ── Event Listeners ───────────────────────────────────────
-taskForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const text = taskInput.value.trim();
-  if (text) {
-    addTask(text);
-    taskInput.value = "";
-    taskInput.focus();
-  }
-});
-
-themeToggle.addEventListener("click", toggleTheme);
-clearBtn.addEventListener("click", clearCompleted);
-
-filterBtns.forEach((btn) => {
-  btn.addEventListener("click", () => {
-    filterBtns.forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    renderTasks();
+  editBtn.onclick = saveEdit;
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") saveEdit();
+    if (e.key === "Escape") ListTask.render();
   });
-});
+}
 
-// ── Init ──────────────────────────────────────────────────
-initTheme();
-renderTasks();
+// ── ListTask Component ───────────────────────────────────
+// Renders the filtered list of tasks
+var ListTask = (function () {
+  var taskListEl = document.getElementById("task-list");
+  var taskCountEl = document.getElementById("task-count");
+  var filterBtns = document.querySelectorAll(".filter-btn");
+  var clearBtn = document.getElementById("clear-completed");
+
+  function getFilteredTasks() {
+    var state = store.getState();
+    var tasks = state.tasks;
+    var filter = state.filter;
+
+    if (filter === "done")
+      return tasks.filter(function (t) {
+        return t.isDone;
+      });
+    if (filter === "not-done")
+      return tasks.filter(function (t) {
+        return !t.isDone;
+      });
+    return tasks;
+  }
+
+  function render() {
+    var filtered = getFilteredTasks();
+    taskListEl.innerHTML = "";
+
+    if (filtered.length === 0) {
+      var empty = document.createElement("li");
+      empty.className = "empty-state";
+      empty.innerHTML = "<span>📋</span>No tasks here yet!";
+      taskListEl.appendChild(empty);
+    } else {
+      filtered.forEach(function (task) {
+        taskListEl.appendChild(Task(task));
+      });
+    }
+
+    updateCount();
+  }
+
+  function updateCount() {
+    var state = store.getState();
+    var active = state.tasks.filter(function (t) {
+      return !t.isDone;
+    }).length;
+    var total = state.tasks.length;
+    taskCountEl.textContent = active + " active / " + total + " total";
+  }
+
+  // Filter buttons
+  filterBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      filterBtns.forEach(function (b) {
+        b.classList.remove("active");
+      });
+      btn.classList.add("active");
+      store.dispatch(setFilterAction(btn.dataset.filter));
+    });
+  });
+
+  // Clear completed
+  clearBtn.addEventListener("click", function () {
+    var state = store.getState();
+    state.tasks
+      .filter(function (t) {
+        return t.isDone;
+      })
+      .forEach(function (t) {
+        store.dispatch(deleteTaskAction(t.id));
+      });
+  });
+
+  // Subscribe to store – re-render on every state change
+  store.subscribe(render);
+
+  return { render: render };
+})();
+
+// ── Theme Toggle ─────────────────────────────────────────
+(function () {
+  var themeToggle = document.getElementById("theme-toggle");
+
+  function initTheme() {
+    var saved = localStorage.getItem("theme");
+    if (saved === "dark") {
+      document.body.classList.add("dark");
+      themeToggle.textContent = "☀️";
+    }
+  }
+
+  themeToggle.addEventListener("click", function () {
+    var isDark = document.body.classList.toggle("dark");
+    themeToggle.textContent = isDark ? "☀️" : "🌙";
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+  });
+
+  initTheme();
+})();
+
+// ── Initial Render ───────────────────────────────────────
+ListTask.render();

@@ -258,13 +258,61 @@ header h1 {
   transition: all var(--transition);
 }
 
-.task-item:hover .delete-btn {
+.task-item:hover .delete-btn,
+.task-item:hover .edit-btn {
   opacity: 1;
 }
 
 .delete-btn:hover {
   color: var(--danger);
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Edit Button ───────────────────────────────────────── */
+.edit-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  opacity: 0;
+  transition: all var(--transition);
+}
+
+.edit-btn:hover {
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+/* ── Save Button (edit-mode) ───────────────────────────── */
+.save-btn {
+  background: none;
+  border: none;
+  color: #22c55e;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  transition: all var(--transition);
+}
+
+.save-btn:hover {
+  background: rgba(34, 197, 94, 0.12);
+}
+
+/* ── Inline Edit Input ─────────────────────────────────── */
+.edit-input {
+  flex: 1;
+  padding: 0.35rem 0.6rem;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
 }
 
 /* ── Footer ────────────────────────────────────────────── */
